@@ -1,5 +1,5 @@
 package VSS;
-$VERSION = '1.0.1';
+$VERSION = '1.0.2';
 
 # --------------------------------------------------------------
 #  This is my first module ever, so if it
@@ -104,8 +104,11 @@ sub item_exists {
 
 	$named_item = $self->{'_vssdb'}->VSSItem($named_item);
 	$err = Win32::OLE->LastError();
-	if ($err =~ m/0x8004d68f/ && $err =~ m/File or project not found/) {
-		return 0;
+	if ($err) {
+		if ($err =~ m/0x8004d68f/ && $err =~ m/File or project not found/) {
+			return 0;
+		}
+		$self->oleerr();
 	}
 
 	return $named_item;
@@ -138,11 +141,15 @@ sub checkout {
 # does this work?
 sub local_file {
 	my ($self, $vss_item) = @_;
+	my $local_spec;
 	$vss_item = $self->_itemize($vss_item);
 
 	if (!$vss_item) { Carp::croak ("{VSS::local_file} don't know what $vss_item is"); }
 
-	return ($vss_item->LocalSpec());
+	$local_spec = $vss_item->LocalSpec();
+	$self->oleerr();
+
+	return ($local_spec);
 }
 
 # no news is good news
@@ -159,12 +166,14 @@ sub share_and_branch {
 			$self->checkin($from);
 		}
 		else {
-			return(Win32::OLE->LastError());
+			return($self->_itemize_name($from).' is checked out');
 		}
 	}
 
 	$self->share($from, $to, 1); # delete if exists
-	$self->branch($to);
+
+	# refresh $to item
+	$self->branch($self->_itemize($self->_itemize_name($to)));
 
 	return 0;
 }
@@ -224,6 +233,10 @@ sub add {
 	my ($self, $vss_dir, $local_file) = @_;
 	$vss_dir = $self->_itemize_name($vss_dir);
 
+	if (!-e $local_file) {
+		Carp::croak("{VSS::add} $local_file does not exist!");
+	}
+
 	$vss_dir = $self->add_directories($vss_dir)->Add($local_file);
 	$self->oleerr();
 	return ($vss_dir); #it's actually an item.
@@ -231,12 +244,14 @@ sub add {
 
 sub add_directories { # ... unless they exist
 	my ($self, $dir_path) = @_;
+	$dir_path = $self->_itemize_name($dir_path);
 	my @all_dirs = split('/', $dir_path);
 	my $dir_base = splice (@all_dirs, 0, 1).'/'; # should be $/
   	my $tmp_dir = $dir_base;
   	foreach my $dir (@all_dirs) {
 		$tmp_dir .= "$dir/";
 		if (!$self->item_exists($tmp_dir)) {
+			$self->_debug($dir_base, 'dir_base');
 			$self->_itemize($dir_base)->NewSubProject($tmp_dir);
 			$self->oleerr();
 		}
@@ -246,9 +261,42 @@ sub add_directories { # ... unless they exist
 	return ($self->_itemize($dir_base));
 }
 
+sub update {
+	my ($self, $vss_dir, $local_file_name, $local_file_path) = @_;
+	($vss_dir = $self->_itemize_name($vss_dir)) =~ s|([^/])$|$1/|;
+	my $vss_name = $vss_dir.$local_file_name;
+
+	if (!-e $local_file_path) { Carp::croak ("{VSS::update} $local_file_path does not exist"); }
+
+	if ($local_file_path !~ m/${local_file_name}$/i) {
+		Carp::croak ("{VSS::update} $local_file_path does not end with $local_file_name");
+	}
+
+	if ($self->item_exists($vss_name)) {
+		my $item = $self->checkout($vss_name) || $self->_itemize($vss_name);
+		if (!$item) {
+			Carp::croak ("{VSS::update} can't use item $item");
+		}
+
+		my $localspec = $self->local_file($item);
+		if (!$localspec) {
+			Carp::croak ("{VSS::update} can't get LocalSpec. All I got was $localspec!");
+		}
+
+		require File::Copy;
+		File::Copy::copy($local_file_path, $localspec) or
+			Carp::croak ("{VSS::update} can't copy $local_file_path to $localspec. $!");
+
+		$self->checkin($item);
+		return 1;
+	}
+
+	return ($self->add($vss_dir, $local_file_path));
+}
+
 sub oleerr {
 	my $cache;
-	if ($cache = Win32::OLE->LastError()) { Carp::croak("$cache\n"); }
+	if ($cache = Win32::OLE->LastError()) { Carp::confess("$cache\n"); }
 }
 
 1;
@@ -359,7 +407,7 @@ Comment [optional]
 
 =back
 
-Returns: VSS Item
+Returns: VSS Item or undef if checked out
 
 =head2 local_file
 
@@ -481,6 +529,30 @@ VSS item or [full|partial] item name representing the director(y|ies) to create.
 =back
 
 This function will create all the directories named, or none if they already exist.
+
+=head2 update
+
+Arguments:
+
+=over
+
+=item 1
+
+VSS item or [full|partial] item name representing the directory to add into. [required]
+
+=item 2
+
+Local file name only (not the path name). Must match the end of the next parameter. [required]
+
+=item 3
+
+Local file (full path/file name, windows convention - use backslashes) to add. [required]
+
+=back
+
+This function will check out the file if it exists and copy the specified local file to in
+before checking it back in, thus updating it. If the item does not exist, it simply calls
+the add method.
 
 =head1 BUGS
 

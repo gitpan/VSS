@@ -76,7 +76,7 @@ METHODS
 
     2   Comment [optional]
 
-    Returns: VSS Item
+    Returns: VSS Item or undef if checked out
 
   local_file
     Arguments:
@@ -102,8 +102,10 @@ METHODS
     Returns: 0 upon success; error string upon failure.
 
   branch
-    Arguments: =over =item 1 VSS item or [full|partial] item name
-    representing the file or project that was shared into. [required] =back
+    Arguments:
+
+    1   VSS item or [full|partial] item name representing the file or
+        project that was shared into. [required]
 
     Returns: nothing
 
@@ -144,11 +146,27 @@ METHODS
   add_directories
     Arguments:
 
-    1 VSS item or [full|partial] item name representing the director(y|ies)
-    to create. [required]
+    1   VSS item or [full|partial] item name representing the
+        director(y|ies) to create. [required]
 
     This function will create all the directories named, or none if they
     already exist.
+
+  update
+    Arguments:
+
+    1   VSS item or [full|partial] item name representing the directory to
+        add into. [required]
+
+    2   Local file name only (not the path name). Must match the end of the
+        next parameter. [required]
+
+    3   Local file (full path/file name, windows convention - use
+        backslashes) to add. [required]
+
+    This function will check out the file if it exists and copy the
+    specified local file to in before checking it back in, thus updating it.
+    If the item does not exist, it simply calls the add method.
 
 BUGS
     Plenty, but they're all within MS VSS itself so they'll never get
@@ -161,5 +179,7 @@ SEE ALSO
     html/msdn_vssole.asp>
 
 AUTHOR
-    BPrudent (Brandon Prudent) email: xlacklusterx@hotmail.com
+    BPrudent (Brandon Prudent)
+
+    email: xlacklusterx@hotmail.com
 
