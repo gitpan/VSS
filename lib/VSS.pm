@@ -1,5 +1,5 @@
 package VSS;
-our $VERSION = v1.0.0;
+$VERSION = '1.0.1';
 
 # --------------------------------------------------------------
 #  This is my first module ever, so if it
@@ -402,9 +402,13 @@ Returns: 0 upon success; error string upon failure.
 =head2 branch
 
 Arguments:
+
 =over
+
 =item 1
+
 VSS item or [full|partial] item name representing the file or project that was shared into. [required]
+
 =back
 
 Returns: nothing
@@ -471,6 +475,7 @@ Arguments:
 =over
 
 =item 1
+
 VSS item or [full|partial] item name representing the director(y|ies) to create. [required]
 
 =back
@@ -491,4 +496,5 @@ L<http://msdn.microsoft.com/library/default.asp?url=/library/en-us/dnvss/html/ms
 =head1 AUTHOR
 
 BPrudent (Brandon Prudent)
+
 email: xlacklusterx@hotmail.com
