@@ -1,4 +1,5 @@
 package VSS;
+our $VERSION = v1.0.0;
 
 # --------------------------------------------------------------
 #  This is my first module ever, so if it
@@ -14,7 +15,6 @@ require Win32::OLE;
 require Carp;
 
 our @ISA = qw(Exporter);
-our $VERSION = v1.0.3;
 
 sub new {
 	my $invocant = shift();
